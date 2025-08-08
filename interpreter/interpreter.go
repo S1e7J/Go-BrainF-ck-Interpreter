@@ -9,75 +9,92 @@ import (
 )
 
 type BF struct {
-  Board []byte
-  Pointer int
-  LC *lc.LoopCount
-  LX *lx.Lexer
-  Reader bufio.Reader
+	Board   []byte
+	Pointer int
+	LC      *lc.LoopCount
+	LX      *lx.Lexer
+	Reader  bufio.Reader
 }
 
 func Abs(val int) int {
-  if (val < 0) {
-    return -1 * val
-  }
-  return val
+	if val < 0 {
+		return -1 * val
+	}
+	return val
+}
+
+func (bf *BF) printBoard() {
+	fmt.Println("---- Board -----")
+	for i := 0; i < len(bf.Board); i++ {
+		if i == bf.Pointer {
+			fmt.Printf(" <%03d> ", bf.Board[i])
+		} else {
+			fmt.Printf("  %03d  ", bf.Board[i])
+		}
+		if (i+1)%16 == 0 {
+			fmt.Println("")
+		}
+	}
+	fmt.Println("----------------")
 }
 
 func New(lc *lc.LoopCount, lx *lx.Lexer) BF {
-  return BF{Board: make([]byte, 255), Pointer: 0, LC: lc, LX: lx, Reader: *bufio.NewReader(os.Stdin)}
+	return BF{Board: make([]byte, 256), Pointer: 0, LC: lc, LX: lx, Reader: *bufio.NewReader(os.Stdin)}
 }
 
-func (bf *BF)HandleToken(token lx.Token) {
-  switch token.Kind {
-  case lx.PLUS:
-    bf.Board[bf.Pointer] += 1
-  case lx.MINUS:
-    bf.Board[bf.Pointer] -= 1
-  case lx.NEXT:
-    bf.Pointer = Abs(bf.Pointer + 1) % len(bf.Board)
-  case lx.PREVIOUS:
-    bf.Pointer = Abs(bf.Pointer - 1) % len(bf.Board)
+func (bf *BF) HandleToken(token lx.Token) {
+	switch token.Kind {
+	case lx.PLUS:
+		bf.Board[bf.Pointer] += 1
+	case lx.MINUS:
+		bf.Board[bf.Pointer] -= 1
+	case lx.DEBUG:
+		bf.printBoard()
+	case lx.NEXT:
+		bf.Pointer = Abs(bf.Pointer+1) % len(bf.Board)
+	case lx.PREVIOUS:
+		bf.Pointer = Abs(bf.Pointer-1) % len(bf.Board)
 
-  case lx.OPENLOOP:
+	case lx.OPENLOOP:
 
-    if (bf.Board[bf.Pointer] == 0) {
+		if bf.Board[bf.Pointer] == 0 {
 
-      token := bf.LX.GetToken()
-      for token.Kind != lx.CLOSELOOP {
-        token = bf.LX.GetToken()
-      }
+			token := bf.LX.GetToken()
+			for token.Kind != lx.CLOSELOOP {
+				token = bf.LX.GetToken()
+			}
 
-    } else {
+		} else {
 
-      if (!bf.LC.Contains(token.Pos)) {
-        bf.LC.Push(token.Pos)
-      }
+			if !bf.LC.Contains(token.Pos) {
+				bf.LC.Push(token.Pos)
+			}
 
-    }
+		}
 
-  case lx.CLOSELOOP:
+	case lx.CLOSELOOP:
 
-    if (bf.Board[bf.Pointer] != 0) {
-      pos, exists := bf.LC.Peek()
-      if !exists {
-        panic("Unable to find Previous Loop [")
-      }
-      bf.LX.CurPos = pos
-      bf.LX.NextChar()
-    } else {
-      bf.LC.Pop()
-    }
-  case lx.OUTPUT:
-    fmt.Printf("%c", bf.Board[bf.Pointer])
+		if bf.Board[bf.Pointer] != 0 {
+			pos, exists := bf.LC.Peek()
+			if !exists {
+				panic("Unable to find Previous Loop [")
+			}
+			bf.LX.CurPos = pos
+			bf.LX.NextChar()
+		} else {
+			bf.LC.Pop()
+		}
+	case lx.OUTPUT:
+		fmt.Printf("%c", bf.Board[bf.Pointer])
 
-  case lx.INPUT:
-    inputChar, err := bf.Reader.ReadByte()
-    if err != nil {
-      panic(err)
-    }
-    bf.Board[bf.Pointer] = inputChar
+	case lx.INPUT:
+		inputChar, err := bf.Reader.ReadByte()
+		if err != nil {
+			panic(err)
+		}
+		bf.Board[bf.Pointer] = inputChar
 
-  default:
-    fmt.Println("Unresolved")
-  }
+	default:
+		fmt.Println("Unresolved")
+	}
 }
